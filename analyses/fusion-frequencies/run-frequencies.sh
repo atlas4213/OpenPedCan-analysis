@@ -1,6 +1,6 @@
 #!/bin/bash
-# PediatricOpenTargets 2021
-# Yuanchao Zhang
+# PediatricOpenTargets 2021, 2022
+# Yuanchao Zhang, Jo Lynne Rokita
 set -e
 set -o pipefail
 
@@ -21,12 +21,14 @@ isl_relapse_each="${data_path}/independent-specimens.rnaseqpanel.relapse.eachcoh
 isl_primary_all="${data_path}/independent-specimens.rnaseqpanel.primary.tsv"
 isl_relapse_all="${data_path}/independent-specimens.rnaseqpanel.relapse.tsv"
 
-# Filtered Fusion file 
+# Filtered Fusion files 
 fusion_file="${data_path}/fusion-putative-oncogenic.tsv"
-fusion_file_dgd="${data_path}/fusion-dgd.tsv.gz"
+fusion_file_dgd="results/fusion-dgd-annotated.tsv"
 
 # Histology file
 histology_file="${data_path}/histologies.tsv"
+
+Rscript -e "rmarkdown::render('00-annotate-panel-fusions.Rmd')"
 
 # gather frequencies at FusionName and Fusion_Type level
 Rscript 01-fusion-frequencies.R --fusion_file $fusion_file \
@@ -44,7 +46,7 @@ jq --compact-output '.[]' \
   results/putative-oncogene-fusion-freq.json \
   > results/putative-oncogene-fusion-freq.jsonl
 
-rm results/putative-oncogene-fusion-freq.json
+rm -f results/putative-oncogene-fusion-freq.json
 
 # gather frequencies at Fused Gene level
 Rscript 01-fusion-frequencies.R --fusion_file $fusion_file \
@@ -62,6 +64,6 @@ jq --compact-output '.[]' \
   results/putative-oncogene-fused-gene-freq.json \
   > results/putative-oncogene-fused-gene-freq.jsonl
 
-rm results/putative-oncogene-fused-gene-freq.json
-rm results/*gz
+rm -f results/putative-oncogene-fused-gene-freq.json
+rm -f results/*gz
 gzip -f results/putative-oncogene*        

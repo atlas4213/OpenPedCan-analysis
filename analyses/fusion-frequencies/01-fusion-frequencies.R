@@ -84,17 +84,7 @@ fusion_df <- read_tsv(fusion_file, guess_max = 100000)
 # assert all records have Sample
 stopifnot(identical(sum(is.na(fusion_df$Sample)), as.integer(0)))
 
-fusion_dgd_df <- read_tsv(fusion_file_dgd, guess_max = 5000) %>%
-  select(-Hugo_Symbol) %>%
-  unique() %>%
-  dplyr::rename(FusionName = Fusion,
-                Sample = Tumor_Sample_Barcode) %>%
-  # add another hyphen in fusion name for consistency with putative oncogenic
-  mutate(FusionName = sub("\\-", "\\--", FusionName),
-         Fusion_Type = "Not available") %>%
-  separate(FusionName, c("Gene1A", "Gene1B"), remove = F) %>%
-  select(Sample, FusionName, Fusion_Type, Gene1A, Gene1B)
-
+fusion_dgd_df <- read_tsv(fusion_file_dgd, guess_max = 5000)
 # assert all records have Sample
 stopifnot(identical(sum(is.na(fusion_dgd_df$Sample)), as.integer(0)))
 
@@ -102,42 +92,21 @@ stopifnot(identical(sum(is.na(fusion_dgd_df$Sample)), as.integer(0)))
 fusion_df <- fusion_df %>%
   bind_rows(fusion_dgd_df)
 
-# get TCGA bs IDs in the histologies file
-tcga_bs_id <- htl_df %>% 
-  filter(cohort=="TCGA") %>%
-  pull(Kids_First_Biospecimen_ID) %>% 
-  unique()
-
-# get DGD panel bs IDs from histologies file (now renamed as above)
-dgd_bs_ids <- htl_df %>% 
-  filter(cohort=="CHOP P30 Panel") %>%
-  pull(Kids_First_Biospecimen_ID) %>% 
-  unique()
-
-
-# filter TCGA samples out of the histologies df
-htl_df <- htl_df %>%  
-  filter(!Kids_First_Biospecimen_ID %in% tcga_bs_id)
-
 # primary independent sample data frame for all cohorts - remove tcga+dgd
 primary_indp_sdf_all <- read_tsv(primary_independence_all,
-                                  col_types = cols(.default = col_guess())) %>% 
-  filter(!Kids_First_Biospecimen_ID %in% c(tcga_bs_id, dgd_bs_ids))
+                                  col_types = cols(.default = col_guess()))
 
 # relapse independent samples for all cohorts - remove tcga+dgd
 relapse_indp_sdf_all <- read_tsv(relapse_independence_all,
-                                  col_types = cols(.default = col_guess())) %>% 
-  filter(!Kids_First_Biospecimen_ID %in% c(tcga_bs_id, dgd_bs_ids))
+                                  col_types = cols(.default = col_guess()))
 
 # primary independent sample data frame for each cohort
 primary_indp_sdf_each <- read_tsv(primary_independence_each,
-                                  col_types = cols(.default = col_guess())) %>% 
-  filter(!Kids_First_Biospecimen_ID %in% tcga_bs_id)
+                                  col_types = cols(.default = col_guess()))
 
 # relapse independent samples for each cohort
 relapse_indp_sdf_each <- read_tsv(relapse_independence_each,
-                                  col_types = cols(.default = col_guess())) %>% 
-  filter(!Kids_First_Biospecimen_ID %in% tcga_bs_id)
+                                  col_types = cols(.default = col_guess()))
 
 # read ENSEMBL, Hugo Symbol and PMTL mapping file
 ensg_hugo_pmtl_df <- read_tsv(file.path(data_dir,'ensg-hugo-pmtl-mapping.tsv'),
@@ -246,8 +215,6 @@ fusion_df <- fusion_df  %>%
   dplyr::rename(Gene_Position = gene_position,
                 Gene_Symbol = gene_symbol)
 
-print(alt_id)
-
 if (identical(alt_id, c("FusionName", "Fusion_Type"))) {
   fusion_df <- fusion_df %>%
     mutate( Alt_ID=paste(!!as.name(alt_id[1]), !!as.name(alt_id[2]),sep="_"))
@@ -267,9 +234,9 @@ if (identical(alt_id, c("FusionName", "Fusion_Type"))) {
 
 rm(tumor_kfbids)
 
-# Compute mutation frequencies -------------------------------------------------
-message('Compute mutation frequencies...')
-cancer_group_cohort_summary_df <- get_cg_cs_tbl(td_htl_dfs$overall_htl_df)
+# Compute fusion frequencies -------------------------------------------------
+message('Compute fusion frequencies...')
+cancer_group_cohort_summary_df <- get_cg_cs_tbl(td_htl_dfs$overall_htl_df, c("TARGET", "PBTA", "GMKF"))
 
 # nf = n_samples filtered
 nf_cancer_group_cohort_summary_df <- cancer_group_cohort_summary_df %>%
@@ -319,10 +286,11 @@ fus_freq_tbl_list <- lapply(
 
 m_fus_freq_tbl <- bind_rows(fus_freq_tbl_list) %>%
   distinct()
-
+ 
+# Add `All Cohorts` annotation
 m_fus_freq_tbl <- m_fus_freq_tbl %>%
   mutate(Dataset = if_else(str_detect(Dataset, '&'),
-                           true = 'all_cohorts', false = Dataset))
+                           true = "All Cohorts", false = Dataset))
 
 ### Adding annotation ###
 
@@ -373,9 +341,7 @@ annotated_m_fus_freq_tbl <- annotated_m_fus_freq_tbl %>%
                 targetFromSourceId = Gene_Ensembl_ID,
                 diseaseFromSourceMappedId = EFO) %>% 
   dplyr::mutate(datatypeId = "somatic_mutation",
-                datasourceId = data_source_id) %>% 
-  dplyr::mutate(Dataset = replace(Dataset,
-         Dataset == "all_cohorts", "All Cohorts")) %>%
+                datasourceId = data_source_id) %>%
   arrange(Disease, Dataset)
 
 # generate UUID for each row of the table
