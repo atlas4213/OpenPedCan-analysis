@@ -1,0 +1,95 @@
+##Windows computers dont come with Docker installed so first we must install it using the Docker Desktop for windows. 
+
+https://docs.docker.com/desktop/install/windows-install/
+
+##Them you can choose whether or not to use the installer or to install it from the command line. Double clicking on the download will initiate the installer
+
+##Command Line install (Must be in the correct location of the download)
+
+"Docker Desktop Installer.exe" install
+
+##Once Docker is installed and laptop has restarted you will probably need to download the WSL 2 backend or you docker daemon will not run (which will 
+##cause docker to not load up and be operational)
+
+##How to download and install the linux kernel for the WSL 2 update is listed below (you shouldn't have to do step 6)
+
+https://docs.microsoft.com/en-us/windows/wsl/install-manual#step-4---download-the-linux-kernel-update-package
+
+##Restart your system and docker should begin running. You can open docker desktop to verify 
+
+
+## Molecular Targets Project/Pediatric Open Targers Docker 
+​
+### Pull and Start Docker Running
+​
+```bash
+# pull latest OT Docker image to make sure you're up to date before you start
+[]$ docker pull pgc-images.sbgenomics.com/d3b-bixu/open-pedcan:latest
+​
+# start docker; will most likely require expanding memory
+# for 14 gigabytes of memory -m 14g
+# FYI gsea is the example name Jo Lynne gave, but can be anything
+#[]$ docker run --name gsea -d -e PASSWORD=GPNFTU -p 8787:8787 -v $PWD:/home/rstudio/OpenPedCan-analysis pgc-images.sbgenomics.com/d3b-bixu/open-pedcan:latest
+ []$ docker run --name gsea --rm -ti -v C:\Users\HILLDD\OpenPedCan-analysis -e PASSWORD=yourpassword -p 8787:8787 rocker/rstudio
+​
+# launch bash shell in docker so you can test run module
+docker exec -ti gsea bash
+```
+​
+### Developing/Testing Code in Docker
+​
+Docker has no connection to your outside system, so you need to clone the repo into it
+​
+```bash
+# Docker has NOTHING installed in it, so need to install nano so you can edit if needed; should also be able to edit from RStudio that's launchable from within Docker
+
+[]$ sudo apt-get update
+
+[]$ sudo apt install curl
+
+[]$ sudo apt-get install nano
+​
+# Clone the OT repo and download data
+[]$ git clone https://github.com/kelseykeith/OpenPedCan-analysis.git
+[]$ cd OpenPedCan-analysis
+# If anything fails md5checksum, remove the problem file and run the command again
+[]$ bash download-data.sh
+​
+# switch to your branch you're working on and then you can test run the code
+[]$ git checkout BRANCH_NAME
+```
+​
+---
+​
+### In Amazon EC2 Instance
+​
+```bash
+### set up in instance
+# after setting up ec2 instance according to the instructions in aws_ec2_instructions.md, log into the instance using the IP address generated
+[]$ ssh ubuntu@IPADDRESS
+# docker is already installed on D3B's EC2 instances so no need to install
+# set up tmux so you're good if you get disconnected
+[]$ tmux new -s NAME
+[]$ cd data-dir
+​
+### start docker
+[]$ docker pull pgc-images.sbgenomics.com/d3b-bixu/open-pedcan:latest
+[]$ docker run --name rerun -d -e PASSWORD=GPNFTU -p 8787:8787 -v $PWD:/home/rstudio/OpenPedCan-analysis pgc-images.sbgenomics.com/d3b-bixu/open-pedcan:latest
+[]$ docker exec -ti rerun bash
+​
+### set up OpenPedCan repo in docker
+# a couple of things to make my life easier
+[]$ apt-get install nano
+[]$ alias ll='ls -lh'
+# pull git repo, download data, and change to branch I'm working on
+[]$ git clone https://github.com/kelseykeith/OpenPedCan-analysis.git
+[]$ cd OpenPedCan-analysis/
+[]$ bash download-data.sh
+[]$ git checkout DEV-BRANCH-NAME
+```
+​
+<https://forums.docker.com/t/what-to-do-when-all-docker-commands-hang/28103/5>
+​
+Need more than 40GB for all this -- try 48 0r 60 next time???
+​
+​
